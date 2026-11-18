@@ -26,11 +26,14 @@ class Task(
     @JoinColumn(name = "user_id", nullable = false)
     var user: User,
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "project_id")
+    var project: Project? = null,
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null
 ) {
-    // Many-to-Many via tabela intermediária explícita (TaskTag)
     @OneToMany(mappedBy = "task", cascade = [CascadeType.ALL], orphanRemoval = true)
     var taskTags: MutableSet<TaskTag> = mutableSetOf()
 }

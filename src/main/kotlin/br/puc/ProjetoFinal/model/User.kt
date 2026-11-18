@@ -12,6 +12,18 @@ class User(
     @Column(nullable = false, unique = true)
     var email: String,
 
+    // Hash BCrypt, nunca a senha em texto puro
+    @Column(nullable = false)
+    var password: String,
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    var role: Role = Role.USER,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sector_id")
+    var sector: Sector? = null,
+
     @Column(nullable = false, updatable = false)
     var createdAt: LocalDateTime = LocalDateTime.now(),
 
@@ -19,11 +31,9 @@ class User(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null
 ) {
-    // One-to-One: o lado dono da FK é UserProfile
     @OneToOne(mappedBy = "user", cascade = [CascadeType.ALL], orphanRemoval = true)
     var profile: UserProfile? = null
 
-    // One-to-Many
     @OneToMany(mappedBy = "user", cascade = [CascadeType.ALL], orphanRemoval = true)
     var tasks: MutableList<Task> = mutableListOf()
 }

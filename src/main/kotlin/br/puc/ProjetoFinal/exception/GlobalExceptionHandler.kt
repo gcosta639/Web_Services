@@ -1,9 +1,12 @@
 package br.puc.ProjetoFinal.exception
 
 import org.slf4j.LoggerFactory
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
+import org.springframework.security.access.AccessDeniedException
+import org.springframework.security.core.AuthenticationException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
@@ -33,6 +36,24 @@ class GlobalExceptionHandler {
     fun handleConflict(ex: ConflictException): ResponseEntity<ErrorResponse> {
         log.warn("Conflito: {}", ex.message)
         return build(HttpStatus.CONFLICT, ex.message ?: "Conflito")
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException::class)
+    fun handleIntegrity(ex: DataIntegrityViolationException): ResponseEntity<ErrorResponse> {
+        log.warn("Violação de integridade: {}", ex.mostSpecificCause.message)
+        return build(HttpStatus.CONFLICT, "Operação viola uma restrição de integridade dos dados")
+    }
+
+    @ExceptionHandler(AuthenticationException::class)
+    fun handleAuthentication(ex: AuthenticationException): ResponseEntity<ErrorResponse> {
+        log.warn("Falha de autenticação: {}", ex.message)
+        return build(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos")
+    }
+
+    @ExceptionHandler(AccessDeniedException::class)
+    fun handleAccessDenied(ex: AccessDeniedException): ResponseEntity<ErrorResponse> {
+        log.warn("Acesso negado: {}", ex.message)
+        return build(HttpStatus.FORBIDDEN, "Você não tem permissão para acessar este recurso")
     }
 
     @ExceptionHandler(MethodArgumentNotValidException::class)

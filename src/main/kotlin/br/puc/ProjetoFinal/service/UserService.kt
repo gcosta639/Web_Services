@@ -8,15 +8,22 @@ import br.puc.ProjetoFinal.dto.UserUpdateRequest
 import br.puc.ProjetoFinal.exception.ConflictException
 import br.puc.ProjetoFinal.exception.ResourceNotFoundException
 import br.puc.ProjetoFinal.mapper.toResponse
+import br.puc.ProjetoFinal.model.Sector
 import br.puc.ProjetoFinal.model.User
 import br.puc.ProjetoFinal.model.UserProfile
+import br.puc.ProjetoFinal.repository.SectorRepository
 import br.puc.ProjetoFinal.repository.UserRepository
 import org.slf4j.LoggerFactory
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
-class UserService(private val userRepository: UserRepository) {
+class UserService(
+    private val userRepository: UserRepository,
+    private val sectorRepository: SectorRepository,
+    private val passwordEncoder: PasswordEncoder
+) {
 
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -25,11 +32,17 @@ class UserService(private val userRepository: UserRepository) {
         if (userRepository.existsByEmail(request.email)) {
             throw ConflictException("Já existe um usuário com o e-mail ${request.email}")
         }
-        val user = User(name = request.name, email = request.email)
+        val user = User(
+            name = request.name,
+            email = request.email,
+            password = passwordEncoder.encode(request.password),
+            role = request.role,
+            sector = request.sectorId?.let { getSector(it) }
+        )
         user.profile = UserProfile(bio = request.bio, phone = request.phone, user = user)
 
         val saved = userRepository.save(user)
-        log.info("Usuário criado: id={}, email={}", saved.id, saved.email)
+        log.info("Usuário criado: id={}, email={}, role={}", saved.id, saved.email, saved.role)
         return saved.toResponse()
     }
 
@@ -52,6 +65,14 @@ class UserService(private val userRepository: UserRepository) {
     }
 
     @Transactional
+    fun assignSector(userId: Long, sectorId: Long): UserResponse {
+        val user = getUser(userId)
+        user.sector = getSector(sectorId)
+        log.info("Usuário {} movido para o setor {}", userId, sectorId)
+        return user.toResponse()
+    }
+
+    @Transactional
     fun delete(id: Long) {
         userRepository.delete(getUser(id))
         log.info("Usuário removido: id={}", id)
@@ -67,7 +88,6 @@ class UserService(private val userRepository: UserRepository) {
     @Transactional
     fun updateProfile(userId: Long, request: ProfileRequest): ProfileResponse {
         val user = getUser(userId)
-        // Se por algum motivo não existir perfil, cria um (cascade ALL persiste junto)
         val profile = user.profile ?: UserProfile(user = user).also { user.profile = it }
         profile.bio = request.bio
         profile.phone = request.phone
@@ -78,5 +98,10 @@ class UserService(private val userRepository: UserRepository) {
     private fun getUser(id: Long): User =
         userRepository.findById(id).orElseThrow {
             ResourceNotFoundException("Usuário com id $id não encontrado")
+        }
+
+    private fun getSector(id: Long): Sector =
+        sectorRepository.findById(id).orElseThrow {
+            ResourceNotFoundException("Setor com id $id não encontrado")
         }
 }
